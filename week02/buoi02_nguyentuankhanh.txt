@@ -1,0 +1,17 @@
+TASK 4: KHẢO SÁT BẢN ĐỒ BỘ NHỚ & DEBUG CRASH LAB
+
+4.2 Phân bổ biến vào bộ nhớ:
+-BIKE_MODEL: Lưu ở phân vùng .rodata (ROM/Flash) vì đây là một mảng hằng số (const char), bộ nhớ chỉ cho phép đọc và không thể thay đổi khi chương trình đang chạy.
+-total_odometer: Lưu ở phân vùng .bss (RAM) vì đây là biến toàn cục (global) được khởi tạo giá trị bằng 0. 
+-current_speed: Lưu ở phân vùng Stack (RAM) vì đây là biến cục bộ (local) được khai báo tạm thời bên trong hàm main().
+
+4.3 Hiện tượng khi kích hoạt hàm crash_simulation():
+-Trên máy tính (GCC): Do hàm đệ quy gọi lại chính nó vô hạn, hệ điều hành sẽ cấp phát bộ nhớ Stack liên tục cho đến khi cạn kiệt. Lúc này, chương trình sẽ bị hệ điều hành ép dừng đột ngột và báo lỗi "Segmentation fault (core dumped)" để bảo vệ bộ nhớ máy tính.
+-Trên vi điều khiển (VD: ARM Cortex-M): Khi Stack bị tràn và ghi đè sang các vùng nhớ không hợp lệ, phần cứng vi điều khiển sẽ phát hiện lỗi truy cập. CPU sẽ lập tức ngưng chương trình hiện tại và nhảy vào hàm xử lý ngắt ngoại lệ (Exception Handler) có tên là HardFault_Handler (hoặc MemManage_Handler) và bị treo tại đó.
+
+TASK 5: TỐI ƯU HÓA DUNG LƯỢNG VỚI LINKER SCRIPT
+
+-Lựa chọn đúng: Cách 1 (uint16_t trip_history[20000] = {0};)
+-Giải thích: 
+Khi khởi tạo mảng toàn cục bằng 0 (Cách 1), mảng này sẽ được xếp vào phân vùng .bss. Đặc điểm của vùng .bss là nó không lưu trữ dữ liệu thực tế trên bộ nhớ Flash (ROM) mà chỉ lưu thông tin kích thước. Khi chip khởi động, nó mới tự động dọn sạch 40KB trên RAM. Do RAM còn trống tới 128KB, việc này hoàn toàn hợp lệ và Flash không bị quá tải.
+Ngược lại, nếu dùng Cách 2 khởi tạo bằng giá trị cụ thể, mảng sẽ bị xếp vào vùng .data. Toàn bộ 40KB dữ liệu này bắt buộc phải được lưu cứng vào Flash. Do Flash chỉ còn trống 20KB, trình biên dịch/Linker sẽ báo lỗi tràn bộ nhớ (Overflow) và không thể nạp code xuống chip.
