@@ -1,0 +1,93 @@
+HW04 - CẤU HÌNH VÀ GIAO TIẾP NGOẠI VI GPIO TRÊN STM32F103
+
+GHI CHÚ TASK 5:
+chọn CÁCH 2 - Điều khiển LED phản hồi bằng Firmware.
+LED sử dụng: LED onboard PC13 của STM32 Blue Pill.
+Phím mục tiêu: Phím 1 (Row1 - Col1).
+Khi nhấn phím 1 hợp lệ, firmware đảo trạng thái LED một lần.
+
+TASK 1 - KIẾN TRÚC PHẦN CỨNG: BẢN CHẤT CÁC CHẾ ĐỘ GPIO
+
+
+1.1. Hoạt động của PMOS và NMOS trong GPIO Output Push-Pull
+
+Trong chế độ Output Push-Pull, tầng xuất của một chân GPIO có thể hình dung gồm hai transistor chính:
+- PMOS ở phía trên, nối chân GPIO lên nguồn VDD (3.3V).
+- NMOS ở phía dưới, nối chân GPIO xuống GND (0V).
+
+Khi xuất mức logic 1:
+- PMOS dẫn (ON).
+- NMOS ngắt (OFF).
+- Chân GPIO được nối lên VDD nên điện áp đầu ra xấp xỉ 3.3V.
+
+Khi xuất mức logic 0:
+- PMOS ngắt (OFF).
+- NMOS dẫn (ON).
+- Chân GPIO được nối xuống GND nên điện áp đầu ra xấp xỉ 0V.
+
+Hai transistor không được bật mạnh cùng lúc trong trạng thái ổn định vì nếu cùng dẫn sẽ tạo đường dòng điện trực tiếp từ VDD xuống GND.
+
+Push-Pull có thể chủ động cấp dòng khi xuất mức 1 và hút dòng khi xuất mức 0, vì vậy tín hiệu lên/xuống đều rõ ràng.
+
+
+1.2. Khi nào cần Input Pull-up? Điều gì xảy ra với Input Floating?
+
+Input Pull-up được dùng khi cần đảm bảo chân Input có mức logic mặc định là 1 khi không có thiết bị nào tác động.
+
+Ví dụ nút nhấn:
+- Một đầu nút nối chân GPIO.
+- Đầu còn lại nối GND.
+- GPIO cấu hình Input Pull-up.
+
+Khi không nhấn, điện trở Pull-up nội kéo chân lên logic 1.
+Khi nhấn, nút nối chân GPIO xuống GND nên GPIO đọc logic 0.
+
+Nếu chân Input để Floating và không kết nối vào đâu thì điện áp tại chân không có mức tham chiếu ổn định. Chân có thể thu nhiễu từ môi trường và giá trị đọc có thể thay đổi ngẫu nhiên giữa 0 và 1. Vì vậy chương trình có thể nhận sai trạng thái.
+
+TASK 2 - TẦM QUAN TRỌNG CỦA CLOCK NGOẠI VI
+
+
+Sau Reset, nhà sản xuất mặc định tắt Clock của nhiều ngoại vi để giảm điện năng tiêu thụ. Các ngoại vi như GPIO, USART, SPI, I2C, Timer cần xung Clock để mạch số bên trong hoạt động.
+
+Nếu tất cả ngoại vi đều được bật Clock ngay sau Reset thì vi điều khiển sẽ tiêu thụ điện nhiều hơn dù nhiều ngoại vi không được sử dụng.
+
+Quy trình cấu hình thông thường:
+1. Enable Peripheral Clock.
+2. Cấu hình phần cứng/thanh ghi ngoại vi.
+3. Thực hiện logic ứng dụng.
+
+Ví dụ bật Clock GPIOC trên STM32F103:
+RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+
+Sau khi Clock GPIOC được bật mới cấu hình PC13 làm Output.
+
+Nếu quên bật Clock cho Port GPIO mà vẫn cấu hình hoặc sử dụng Port đó thì GPIO sẽ không hoạt động đúng như mong muốn; việc cấu hình không có tác dụng thực tế lên chân. Vì vậy Enable Clock phải thực hiện trước cấu hình GPIO.
+
+TÓM TẮT PHẦN THỰC HÀNH
+
+
+Task 3:
+- LED onboard PC13.
+- PC13 Output Push-Pull.
+- Bật Clock GPIOC trên APB2 trước khi cấu hình.
+- LED sáng 500 ms, tắt 500 ms.
+
+Task 4:
+- LED onboard PC13.
+- Nút nhấn PA0 cấu hình Input Pull-up.
+- Nối nút nhấn giữa PA0 và GND.
+- Debounce phần mềm 20 ms.
+- Chỉ đảo trạng thái LED sau một chu kỳ nhấn rồi thả.
+- Nhấn giữ không làm LED đảo liên tục.
+
+Task 5:
+- Row1 = PA0, Row2 = PA1: Digital Output Push-Pull.
+- Col1 = PB0, Col2 = PB1: Digital Input Pull-up.
+- LED = PC13.
+- Lần lượt kéo từng Row xuống 0 và đọc Col.
+- Phím 1 = Row1 + Col1.
+- Phím 2 = Row1 + Col2.
+- Phím 3 = Row2 + Col1.
+- Phím 4 = Row2 + Col2.
+- Chọn LED phản hồi Cách 2.
+- Nhấn phím 1 hợp lệ sẽ đảo trạng thái LED một lần.
